@@ -170,3 +170,180 @@ if __name__ == '__main__':
     w.setWindowTitle('QC')
     w.show()
 sys.exit(app.exec_())
+###############################3
+import sys
+import numpy as np
+from PyQt4 import QtGui, QtCore
+from PyQt4.QtGui import QApplication, QTextEdit, QPlainTextEdit, QMainWindow
+
+
+class CustomButton(QtGui.QPushButton):
+
+    right_clicked= QtCore.pyqtSignal()
+
+    def __init__(self, *args, **kwargs):
+        QtGui.QPushButton.__init__(self, *args, **kwargs)
+
+
+class MyWindow(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        """Main Function includes:
+        Main Menubar
+        Text Editor & update list button
+        """
+        super(MyWindow, self).__init__(parent)
+        openFile=QtGui.QAction("&Open File",self)
+        openFile.setShortcut("Ctrl+o")
+        openFile.setStatusTip('Open File')
+        openFile.triggered.connect(self.file_open)
+
+        self.statusBar()
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(openFile)
+
+        #to get the positions text file
+        #label does not work yet FIX IT !!!
+        #self.label =QtGui.QLabel("Position of atom:",self)
+        #self.label.move(40,791)
+        self.e2 = QPlainTextEdit(self)
+        self.e2.resize(400,150)
+        self.e2.move(40,815)
+        # create button to update list
+        self.button =QtGui.QPushButton(self)
+        self.button.setText('Update List')
+        self.button.move(450,815)
+        self.button.clicked.connect(self.on_button_clicked)
+        # create button to observe region
+        self.b_region =QtGui.QPushButton(self)
+        self.b_region.setText('Observe Region')
+        self.b_region.setFixedWidth(130)
+        self.b_region.move(450,860)
+        self.b_region.clicked.connect(self.on_button_region)
+
+        self.rep_atoms=[]
+        self.click_count=0
+
+
+
+    def file_open(self):
+        """User can open the textfile which contains position of atoms.
+        """
+        name=QtGui.QFileDialog.getOpenFileName(self, 'Open File')
+        file=open(name,'r')
+        #Convert name of textfile from Unicode to string
+        self.fname=str(name)
+        self.gen_atoms()
+
+#works but with combination of mouse buttons clicks not only with pure right click
+    def buttonClicked(self):
+        sender = self.sender()
+        if QtGui.qApp.mouseButtons() & QtCore.Qt.RightButton :
+        #if QtCore.Qt.RightButton :
+            self.click_count+=1
+            if self.click_count!=2:
+               self.X1=int(sender.objectName())
+               self.e2.appendPlainText("WARNING: Click on another atom as the last atom of considered region")
+            if self.click_count==2:
+               self.e2.appendPlainText("WARNING: Click on Observe Region button")
+               self.X2=int(sender.objectName())
+
+    def on_button_region(self):
+        """User clicks on Observe region button position of atoms on region will be appear in text box
+        & color of atoms change to red.
+        """
+        self.click_count=0
+        xa=self.atoms['x']
+        ya=self.atoms['y']
+        self.e2.clear()
+        for i in range(self.X1,self.X2+1,1):
+            self.e2.appendPlainText("Atom No: "+str(i)+" "+
+            "x: "+str(xa[i])+" "+
+            "y: "+str(ya[i]))
+
+
+    def findcolor(self):
+        """The function which is called when a user clicks on a atom.
+        When an atom is clicked:
+        1) The color of button will change from green to red and vice versa for unclicking.
+        2) Position & number of marked atom will appear in text box.
+         """
+        xa=self.atoms['x']
+        ya=self.atoms['y']
+	# sender is the atom
+        sender = self.sender()
+
+        atom_id = int(sender.objectName())
+	if atom_id not in self.rep_atoms:
+        # the unclicked atom got clicked...
+
+	    self.rep_atoms.append(atom_id)
+	    # extra printing for beauty:
+            self.e2.clear()
+	    self.e2.appendPlainText("Atom No: "+str(atom_id)+" "+
+				    "x: "+str(xa[atom_id])+" "+
+				    "y: "+str(ya[atom_id]))
+
+	    # change colour of the sender object (atom) to red:
+	    sender.setStyleSheet('background-color: red')
+	else:
+	    # already clicked button/atom
+	    self.rep_atoms.remove(atom_id)
+
+	    # set colour of the sender object (atom) to green
+	    sender.setStyleSheet('background-color: green')
+
+    def gen_atoms(self):
+        """Acoording to the Selected textfile:
+        It will be read
+        At position of each atom, a button will be generated.
+        """
+        self.atoms=np.genfromtxt(self.fname, delimiter=" ", names=True)
+        numatoms=len(self.atoms)
+        xa=self.atoms['x']
+        ya=self.atoms['y']
+        for i in range(numatoms):
+            self.b = CustomButton(self)
+            #self.b =QtGui.QPushButton(self)
+            self.b.setText(str(i))
+            self.b.setObjectName('%d' % i)
+            self.b.resize(8,8)
+            self.b.move(40.0+xa[i]*10.0,25+ya[i]*10)
+            self.b.setStyleSheet("QPushButton { background-color: green}")
+            self.b.clicked.connect(self.findcolor)
+            self.b.clicked.connect(self.buttonClicked)
+            self.b.right_clicked.connect(self.chngclr)
+            self.b.show()
+
+    def chngclr(self):
+        sender=self.sender()
+        print(sender.objectName())
+        self.b.setStyleSheet('background-color: red')
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.RightButton:
+            self.b.right_clicked.emit()
+
+    def on_button_clicked(self):
+	"""User clicked on update_list button:
+	First of all text box will be cleaned.
+	User can observe position list for all of the marked atoms."""
+        self.e2.clear()
+        xa=self.atoms['x']
+        ya=self.atoms['y']
+        for i in self.rep_atoms:
+	    self.e2.appendPlainText("Atom No: "+str(i)+" "+
+				    "x: "+str(xa[i])+" "+
+				    "y: "+str(ya[i]))
+
+#main settings of GUI
+app=QApplication(sys.argv)
+#Opens the main window
+if __name__ == '__main__':
+    MyWindow()
+    w=MyWindow()
+    w.setGeometry(1000, 1000, 1200, 1200)
+    w.setWindowTitle('QC')
+    w.show()
+sys.exit(app.exec_())
