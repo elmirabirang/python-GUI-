@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from six.moves import range
+import random
 from mywindow import *
 #an instance of the MyWindow class
 MyWindow()
@@ -72,6 +73,19 @@ def on_mesh_click():
     for i in repatoms:
         w.rep_atoms.append(i)
 
+    #color generator
+
+    #r = randrange(255)
+    #g= randrange(255)
+    #b= randrange(255)
+    #QColor.setRgb (self, int r, int g, int b, int alpha = 255)
+    def setColor(self, color):
+        r=random.randint(0,1)
+        g=random.randint(104,105)
+        b=random.randint(149,150)
+        self.color = QtGui.QColor(0,100,155)
+        self.update()
+
     #list of atoms for each cluster
     cluster_list=[]
     cradius=2
@@ -79,13 +93,21 @@ def on_mesh_click():
         #list of atoms which located in all clusters
         atom_in_cluster=[]
         for j in range(w.numatoms):
+            #print(r+g+b)
             if j not in repatoms:
                 if abs(mesh_points[i][0]-w.xa[j])<=cradius and \
                    abs(mesh_points[i][1]-w.ya[j])<=cradius:
-                    w.b[j].setStyleSheet("QPushButton { background-color: gray}")
+                    #w.b[j].setStyleSheet("QPushButton { background-color: \
+                    #                     QColor(random.randint(0,1),random.randint(104,105),random.randint(149,150))}")
                     atom_in_cluster.append(j)
         cluster_list.append(atom_in_cluster)
-    #print(w.rep_atoms)
+    for i in atom_in_cluster:
+        r=1
+        g=99
+        b=155
+        alpha=255
+        color=QtGui.QColor.setRgb (1,99,155,)
+        w.b[i].setStyleSheet("QPushButton { background-color: color}")
 
     #store triangle element in mesh_tris
     mesh_tris = np.array(mesh.elements)
@@ -109,4 +131,3 @@ if __name__ == '__main__':
     example(w)
 
 sys.exit(app.exec_())
-
