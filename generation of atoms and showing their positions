@@ -2,19 +2,111 @@ from __future__ import absolute_import
 from __future__ import print_function
 from six.moves import range
 from mywindow import *
-#atomFile = "dump.coordss"
+#an instance of the MyWindow class
 MyWindow()
 w=MyWindow()
-def some_function_name(w):
-    print("big fail!")
+def example(w):
+    """Shows window
+    Store repatoms in points as the nodes of mesh.
+    """
+    w.show()
+    #User clicks on Create Mesh
+    w.mesh_button.clicked.connect(on_mesh_click)
+def on_mesh_click():
+    """get the signal and create the mesh
+    """
+    w.axes.clear()
+    """for i in range(w.numatoms):
+        w.b[i].setStyleSheet("QPushButton { background-color: green}")
+        #remove from repatom list
+    for i in range(w.rep_atoms)
+        w.rep_atoms.remove(#list of all atoms as repatoms & within cluster)"""
+
+    import meshpy.triangle as triangle
+    points=[]
+    for i in w.rep_atoms:
+        points.append((w.xa[i],w.ya[i]))
+    # find number of repatoms are choosen by user
+    num_choosen_repatom=len(points)
+
+    def round_trip_connect(start, end):
+      result = []
+      for i in range(start, end):
+        result.append((i, i+1))
+      result.append((end, start))
+      return result
+    info = triangle.MeshInfo()
+    info.set_points(points)
+    info.set_facets(round_trip_connect(0, len(points)-1))
+
+    mesh = triangle.build(info, max_volume=5000, min_angle=25)
+    #store nodes(includes position of nodes)
+    #& elements(includes nodes number which create every element)
+    #store nodes in mesh_points
+    mesh_points = np.array(mesh.points)# dont need it ?
+    #Number of nodes
+    num_nodes=len(mesh_points)
+    #list of all repatoms(choosen by user & by mesh)
+    repatoms=[]
+    mesh_to_atom = []
+    # modify node's position
+    #if position of a node is in \\
+    #the region of an atom(atom's position + epsilon)
+    #position of node replaces with position of atom
+    for i in range(num_nodes):
+        for j in range(w.numatoms):
+            #find the region where each node is located.
+            #mesh_points[i][0]: x_position of node
+            #mesh_points[i][1]: y_position of node
+            #w.xa[]: x_position of atom
+            #w.ya[]: y_position of atom
+            if abs(mesh_points[i][0]-w.xa[j])<=0.56 and \
+               abs(mesh_points[i][1]-w.ya[j])<=0.49:
+               # substitute atom's position with node's position.
+               mesh_points[i][0]=w.xa[j]
+               mesh_points[i][1]=w.ya[j]
+               w.b[j].setStyleSheet("QPushButton { background-color: red}")
+               #mesh_to_atom[i] = j;
+               repatoms.append(j)
+    #add mesh_repatoms to the list of choosen repatoms
+    for i in repatoms:
+        w.rep_atoms.append(i)
+
+    #list of atoms for each cluster
+    cluster_list=[]
+    cradius=2
+    for i in range(num_choosen_repatom-1,num_nodes):
+        #list of atoms which located in all clusters
+        atom_in_cluster=[]
+        for j in range(w.numatoms):
+            if j not in repatoms:
+                if abs(mesh_points[i][0]-w.xa[j])<=cradius and \
+                   abs(mesh_points[i][1]-w.ya[j])<=cradius:
+                    w.b[j].setStyleSheet("QPushButton { background-color: gray}")
+                    atom_in_cluster.append(j)
+        cluster_list.append(atom_in_cluster)
+    #print(w.rep_atoms)
+
+    #store triangle element in mesh_tris
+    mesh_tris = np.array(mesh.elements)
+    #plot mesh
+    w.axes.triplot(mesh_points[:,0], -1*mesh_points[:,1], mesh_tris)
+    #limit of x & y axes
+    x_lim=w.max_x
+    y_lim=-1*w.max_y
+    w.axes.set_xlim([0,x_lim])
+    w.axes.set_ylim([y_lim,0])#
+    #draw mesh plot in the mesh window
+    w.canvas.draw()
 
 #Opens the main window
 if __name__ == '__main__':
-    MyWindow()
     w=MyWindow()
-    w.setGeometry(1000, 1000, 1200, 1200)
+    #geometry of main window
+    #setGeometry(x_0, y_0, width of main window, height of main window)
+    w.setGeometry(200, 200, 1200, 1000)
     w.setWindowTitle('QC')
-    w.show()
-    some_function_name(w)
+    example(w)
 
 sys.exit(app.exec_())
+
