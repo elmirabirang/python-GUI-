@@ -3,6 +3,7 @@ from __future__ import print_function
 from six.moves import range
 import random
 from mywindow import *
+from PyQt4.QtGui import QColor as QColor
 #an instance of the MyWindow class
 MyWindow()
 w=MyWindow()
@@ -13,7 +14,7 @@ def example(w):
     w.show()
     #User clicks on Create Mesh
     w.mesh_button.clicked.connect(on_mesh_click)
-def on_mesh_click():
+def on_mesh_click(self):
     """get the signal and create the mesh
     """
     w.axes.clear()
@@ -73,41 +74,24 @@ def on_mesh_click():
     for i in repatoms:
         w.rep_atoms.append(i)
 
-    #color generator
-
-    #r = randrange(255)
-    #g= randrange(255)
-    #b= randrange(255)
-    #QColor.setRgb (self, int r, int g, int b, int alpha = 255)
-    def setColor(self, color):
-        r=random.randint(0,1)
-        g=random.randint(104,105)
-        b=random.randint(149,150)
-        self.color = QtGui.QColor(0,100,155)
-        self.update()
-
     #list of atoms for each cluster
     cluster_list=[]
     cradius=2
     for i in range(num_choosen_repatom-1,num_nodes):
         #list of atoms which located in all clusters
         atom_in_cluster=[]
+        cya="rgb(205, 92, 92)"
+        a=["background-color: rgb(205, 92, 92)","background-color: blue","background-color: violet", \
+          "background-color: lightcoral"]
         for j in range(w.numatoms):
             #print(r+g+b)
-            if j not in repatoms:
+            if j not in w.rep_atoms:
                 if abs(mesh_points[i][0]-w.xa[j])<=cradius and \
                    abs(mesh_points[i][1]-w.ya[j])<=cradius:
-                    #w.b[j].setStyleSheet("QPushButton { background-color: \
-                    #                     QColor(random.randint(0,1),random.randint(104,105),random.randint(149,150))}")
+
+                    w.b[j].setStyleSheet(a[0])
                     atom_in_cluster.append(j)
         cluster_list.append(atom_in_cluster)
-    for i in atom_in_cluster:
-        r=1
-        g=99
-        b=155
-        alpha=255
-        color=QtGui.QColor.setRgb (1,99,155,)
-        w.b[i].setStyleSheet("QPushButton { background-color: color}")
 
     #store triangle element in mesh_tris
     mesh_tris = np.array(mesh.elements)
