@@ -3,7 +3,8 @@ from __future__ import print_function
 from six.moves import range
 import random
 from mywindow import *
-from PyQt4.QtGui import QColor as QColor
+import pyvoro
+#import voroplusplus
 #an instance of the MyWindow class
 MyWindow()
 w=MyWindow()
@@ -14,23 +15,30 @@ def example(w):
     w.show()
     #User clicks on Create Mesh
     w.mesh_button.clicked.connect(on_mesh_click)
-def on_mesh_click(self):
+    w.cluster_button.clicked.connect(showDialog)
+    #w.voronoi_button.clicked.connect(voro_diag)
+def showDialog(self):
+    """when user click on Generate Cluster button
+      a dialog window opens to enter the cut_off radius
+    """
+    text, ok = QtGui.QInputDialog.getText(w, 'Input Radius',
+        'Enter Cluster Radius:')
+    if ok:
+    #if clicks on ok the entered digit is saved in self.cut_off
+    #cut off radius of Clusters eneterd by user
+        w.cut_off=float(text)
+        generate_clusters()
+def on_mesh_click():
     """get the signal and create the mesh
     """
+    #clear prevoius mesh plot
     w.axes.clear()
-    """for i in range(w.numatoms):
-        w.b[i].setStyleSheet("QPushButton { background-color: green}")
-        #remove from repatom list
-    for i in range(w.rep_atoms)
-        w.rep_atoms.remove(#list of all atoms as repatoms & within cluster)"""
 
     import meshpy.triangle as triangle
     points=[]
     for i in w.rep_atoms:
         points.append((w.xa[i],w.ya[i]))
-    # find number of repatoms are choosen by user
-    num_choosen_repatom=len(points)
-
+    #connect repatoms to generate triangular elements
     def round_trip_connect(start, end):
       result = []
       for i in range(start, end):
@@ -42,19 +50,16 @@ def on_mesh_click(self):
     info.set_facets(round_trip_connect(0, len(points)-1))
 
     mesh = triangle.build(info, max_volume=5000, min_angle=25)
-    #store nodes(includes position of nodes)
-    #& elements(includes nodes number which create every element)
+    #store nodes(include position of nodes)
+    #& elements(include nodes number which create every element)
     #store nodes in mesh_points
-    mesh_points = np.array(mesh.points)# dont need it ?
+    mesh_points = np.array(mesh.points)
     #Number of nodes
     num_nodes=len(mesh_points)
-    #list of all repatoms(choosen by user & by mesh)
-    repatoms=[]
-    mesh_to_atom = []
     # modify node's position
     #if position of a node is in \\
     #the region of an atom(atom's position + epsilon)
-    #position of node replaces with position of atom
+    #position of atom replaces with position of node
     for i in range(num_nodes):
         for j in range(w.numatoms):
             #find the region where each node is located.
@@ -63,35 +68,13 @@ def on_mesh_click(self):
             #w.xa[]: x_position of atom
             #w.ya[]: y_position of atom
             if abs(mesh_points[i][0]-w.xa[j])<=0.56 and \
-               abs(mesh_points[i][1]-w.ya[j])<=0.49:
+               abs(mesh_points[i][1]-w.ya[j])<=0.49 :
                # substitute atom's position with node's position.
                mesh_points[i][0]=w.xa[j]
                mesh_points[i][1]=w.ya[j]
                w.b[j].setStyleSheet("QPushButton { background-color: red}")
-               #mesh_to_atom[i] = j;
-               repatoms.append(j)
-    #add mesh_repatoms to the list of choosen repatoms
-    for i in repatoms:
-        w.rep_atoms.append(i)
-
-    #list of atoms for each cluster
-    cluster_list=[]
-    cradius=2
-    for i in range(num_choosen_repatom-1,num_nodes):
-        #list of atoms which located in all clusters
-        atom_in_cluster=[]
-        cya="rgb(205, 92, 92)"
-        a=["background-color: rgb(205, 92, 92)","background-color: blue","background-color: violet", \
-          "background-color: lightcoral"]
-        for j in range(w.numatoms):
-            #print(r+g+b)
-            if j not in w.rep_atoms:
-                if abs(mesh_points[i][0]-w.xa[j])<=cradius and \
-                   abs(mesh_points[i][1]-w.ya[j])<=cradius:
-
-                    w.b[j].setStyleSheet(a[0])
-                    atom_in_cluster.append(j)
-        cluster_list.append(atom_in_cluster)
+               if j not in w.rep_atoms:
+                   w.rep_atoms.append(j)
 
     #store triangle element in mesh_tris
     mesh_tris = np.array(mesh.elements)
@@ -105,6 +88,139 @@ def on_mesh_click(self):
     #draw mesh plot in the mesh window
     w.canvas.draw()
 
+
+def generate_clusters():
+    """get the signal and assign atoms to the clusters
+       each cluster has a differenet color
+    """
+    #store full atomistic atoms number
+    global fully_atomic
+    fully_atomic=[]
+    #store atoms for each cluster
+    global atoms_in_cluster
+    atoms_in_cluster = [[] for x in xrange(len(w.rep_atoms))]
+    for i in range(w.numatoms):
+        if w.first_atom_id>=0:
+        #change the color of fully atomistic region to red.
+            if (w.xa[w.second_atom_id] <= w.xa[i] <= w.xa[w.first_atom_id] and \
+                0<= w.ya[i] <= w.ya[w.first_atom_id]):
+                w.b[i].setStyleSheet('background-color: red')
+                fully_atomic.append(i)
+        #find the closeset repatom for each atom.
+        i_rep_atom = -1
+        #distance between atom with rep_atoms
+        i_distance = 999999999999999999.
+        for j in w.rep_atoms:
+            cur_distance = (w.xa[j]-w.xa[i])**2+(w.ya[j]-w.ya[i])**2
+            if cur_distance <= (w.cut_off**2) and cur_distance < i_distance:
+                i_distance = cur_distance
+                #j is closest repatom number for atom i
+                i_rep_atom = j
+
+        if i_rep_atom != -1:
+        # found closest repatom, add the current atom to its cluster
+            n=w.rep_atoms.index(i_rep_atom)
+            atoms_in_cluster[n].append(i)
+
+    #generate different colors for each cluster
+    for i in range(len(w.rep_atoms)):
+        r=random.randrange(200)
+        g=random.randrange(200)
+        b=random.randrange(200)
+        a=[(r,g,b)]
+        #add fully_atomic to rep_atoms
+        #for atoms of each cluster
+        for j in atoms_in_cluster[i]:
+            #prevent of changing the rep_atom & fully_atomic color from red to cluster color
+            if j not in w.rep_atoms and \
+               j not in fully_atomic:
+                w.b[j].setStyleSheet("background-color: " +"rgb"+str(a[0]))
+    #append fully_atomic to rep_atoms
+    for i in range(len(fully_atomic)):
+        w.rep_atoms.append(fully_atomic[i])
+    voro_diag()
+
+
+def voro_diag():
+    import matplotlib.pyplot as pt
+    #w.axes.clear()
+    #w.axes.set_color_cycle(['black'])
+# point positions
+    Voro_diag_point_position=[]
+    for i in w.rep_atoms:
+        Voro_diag_point_position.append([w.xa[i],w.ya[i]])
+        ya=-1*w.ya[i]
+        pt.plot(w.xa[i],ya, 'ro')
+    pt.hold(True)
+# boundaries
+    x_min=w.xa.min()
+    x_max=w.xa.max()+w.epsilon_x
+    y_min=w.ya.min()
+    y_max=w.ya.max()+w.epsilon_y
+
+#simulation box volume
+    box_v=(x_max-x_min)*(y_max-y_min)
+
+# block size= max distance between two points that might be adjacent
+    Block_size=0.5
+    voro=pyvoro.compute_2d_voronoi(Voro_diag_point_position,[[x_min,x_max], [y_min,y_max]],Block_size,z_height=0.5)
+    #store volume of each cell
+    vol_cell=[]
+    all_vertices = []
+    for i in voro:
+        vol_cell.append(i['volume'])
+        all_vertices.append(i['vertices'])
+    t_x=[]
+    t_y=[]
+
+    for j in range(len(all_vertices)):
+        for i in range(len(all_vertices[j])):
+            tt=(all_vertices[j][i])
+            t_x.append(tt[0])
+            t_y.append(-1*tt[1])
+            #pt.plot(t_x,t_y, 'ro')
+        #pt.hold(True)
+    #x_lim=w.max_x
+    #y_lim=-1*w.max_y
+    #w.axes.set_xlim([0,x_lim])
+    #w.axes.set_ylim([y_lim,0])
+    t_xx=[]
+    t_yy= []
+    for i in range(len(all_vertices[0])):
+        t_xx.append(t_x[i])
+        t_yy.append(t_y[i])
+    t_xx.append(t_x[0])
+    t_yy.append(t_y[0])
+    pt.plot(t_xx,t_yy)
+    pt.hold(True)
+    k=0
+    for j in range(1,len(all_vertices)):
+        t_xx=[]
+        t_yy= []
+        k=k+len(all_vertices[j-1])
+        for i in range(k,k+len(all_vertices[j])):
+            t_xx.append(t_x[i])
+            t_yy.append(t_y[i])
+        t_xx.append(t_x[k])
+        t_yy.append(t_y[k])
+        #w.axes.plot(t_xx,t_yy)
+        pt.plot(t_xx,t_yy)
+    #w.axes.hold(True)
+    pt.hold(True)
+    #w.canvas.draw()
+    pt.show()
+
+
+    #sum of cell's volumes
+    vvol=0
+    for j in range(len(vol_cell)):
+        vvol+=vol_cell[j]
+
+    print("simulation area: ",box_v,"Voronoi total area: ",vvol,"    ","cell's area: ",vol_cell)
+
+    if len(vol_cell)==len(w.rep_atoms):
+        print("number of voronoi cell is:", len(vol_cell),"number of rep-atoms is:",len(w.rep_atoms) )
+
 #Opens the main window
 if __name__ == '__main__':
     w=MyWindow()
@@ -115,3 +231,285 @@ if __name__ == '__main__':
     example(w)
 
 sys.exit(app.exec_())
+##############################################################
+from custombutton import *
+from point_on_linesegment import *
+import matplotlib.pyplot
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+#active to add navigation toolbar to figure window
+#from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+from matplotlib.figure import Figure
+import os
+from math import floor, ceil
+#GUI includes 3 winodws:
+#1) Main window
+#2) figure window
+#3) mesh window
+
+class MyWindow(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        """Main Function includes:
+        Main Menubar
+        Text Editor , update list & create mesh button
+        """
+        super(MyWindow, self).__init__(parent)
+        openFile=QtGui.QAction("&Open File",self)
+        openFile.setShortcut("Ctrl+o")
+        openFile.setStatusTip('Open File')
+        openFile.triggered.connect(self.file_open)
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(openFile)
+
+        #call create_main _frame function
+        self.create_main_frame()
+        #to get the positions text file
+        self.label =QtGui.QLabel("Position:",self)
+        self.label.move(40,791.5)
+
+        # Auxiliary output text box
+        self.txtbox = QPlainTextEdit(self)
+        self.txtbox.resize(400,150)
+        self.txtbox.move(40,815)
+        #self.txtbox.setText('Enter Cluster Radius:')
+        # An update list button
+        self.update_button =QtGui.QPushButton(self)
+        self.update_button.setText('Update List')
+        self.update_button.move(450,810)
+        self.update_button.clicked.connect(self.on_update_click)
+        # A mesh button
+        self.mesh_button =QtGui.QPushButton(self)
+        self.mesh_button.setText('Generate Mesh')
+        self.mesh_button.setFixedWidth(130)
+        self.mesh_button.move(450,850)
+        #cluster button
+        #get cut_off Radius#assign atoms to clusters
+        #set a color for each cluster
+        self.cluster_button = QtGui.QPushButton('Generate Cluster', self)
+        self.cluster_button.move(450, 890)
+        self.cluster_button.setFixedWidth(130)
+        #Voronoi button
+        self.voronoi_button = QtGui.QPushButton('Generate Voronoi', self)
+        self.voronoi_button.move(450, 925)
+        self.voronoi_button.setFixedWidth(130)
+
+        # stores repatom number
+        self.rep_atoms=[]
+
+        # Atom id when a user did a right click
+        self.right_click_prev_atom_id=-1
+        self.first_atom_id=-1
+
+    def file_open(self):
+        """User opens the textfile which contains position of atoms.
+        """
+        name=QtGui.QFileDialog.getOpenFileName(self, 'Open File')
+        file=open(name,'r+')
+        self.fname=str(name)
+
+        f = open(self.fname,"r")
+        lines=f.readlines()
+        f.close()
+        #remove line 1-9 of dump file
+        #create new text file which stores position of atoms
+        #User always opens dump file
+        """f = open("atom_poistion.txt","w")
+        for line in lines:
+            line = line.replace("ITEM: ", "")
+            line = line.replace("ATOMS ", "")
+            f.write(line)
+        f.close()
+
+        self.newformat=np.genfromtxt("atom_poistion.txt",dtype=None, delimiter="\n")
+        f = open("atom_poistion.txt","w")
+        for el in np.delete(self.newformat,[0,1,2,3,4,5,6,7],axis=0):
+            f.write(str(el)+'\n')
+        f.close()"""
+        #Convert name of textfile from Unicode to string
+        self.gen_atoms()
+
+    def create_main_frame(self):
+        #combine pyqt & MatplotlibWidget
+        #add mesh-window as a widget to the main-window
+        self.main_frame = QtGui.QWidget()
+
+        # Create FigCanvas objects.
+        # 12x8 inches, 100 dots-per-inch
+        # geometry of figure window
+        self.dpi = 100
+        self.width_fig_win=12
+        self.height_fig_win=8
+        # width_fig is 1200 inches,height_fig is 800 inches
+        self.fig = Figure((self.width_fig_win, self.height_fig_win), dpi=self.dpi)
+
+        #FigureCanvas is the area onto which the figure is drawn.
+        self.canvas = FigureCanvas(self.fig)
+        self.canvas.setParent(self.main_frame)
+
+        # Create the navigation toolbar, tied to the canvas
+        #active to add navigation toolbar to figure window
+        #self.toolbar = CustomToolbar(self.canvas, self.main_frame)
+        #self.toolbar.update()
+
+        #geometry of mesh window
+        #relative geometries of mesh window w.r.t figure window
+        self.relative_offset_x_mesh_window=float(1)/12 #100 in
+        self.relative_offset_y_mesh_window=float(5)/80 #50 in
+        self.relative_width_mesh_window=float(5)/6 #1000 in
+        self.relative_height_mesh_window=float(7)/8 #700 in
+
+        self.axes = self.fig.add_axes([(self.relative_offset_x_mesh_window),
+                                       (self.relative_offset_y_mesh_window),
+                                       (self.relative_width_mesh_window),
+                                       (self.relative_height_mesh_window)])
+
+        #inverce of y axis
+        #self.axes.invert_yaxis()
+        #x axis on top of graph
+        self.axes.xaxis.tick_top()
+        self.axes.text(0.48, 1.03, '(x)', va='top', transform=self.axes.transAxes)
+        self.axes.text(-0.030, 0.50, '(y)', va='top', transform=self.axes.transAxes)
+        # set widget in window
+        self.setCentralWidget(self.main_frame)
+
+    def gen_atoms(self):
+        """Acoording to the Selected textfile:
+        At position of each atom, a button will be generated.
+        """
+        self.atoms=np.genfromtxt("atom_poistion.txt", delimiter=" ", names=True)
+        self.numatoms=len(self.atoms)
+        self.xa=self.atoms['x']
+        self.ya=self.atoms['y']
+        self.min_x=floor(self.xa.min())
+        self.max_x=ceil(self.xa.max())
+        self.min_y=floor(self.ya.min())
+        self.max_y=ceil(self.ya.max())
+
+        #origin of main_window: top left
+        #position of atoms(buttons) will be setting
+        #in main window w.r.t offsets & scales
+        offset_x=(self.relative_offset_x_mesh_window*self.width_fig_win *self.dpi)
+        offset_y=(self.relative_offset_y_mesh_window*self.height_fig_win*self.dpi)
+
+        self.button_width =7.5
+        self.button_height=7.5
+
+        scale_x=(self.relative_width_mesh_window *self.width_fig_win *self.dpi)/(self.max_x-self.min_x)
+        scale_y=(self.relative_height_mesh_window*self.height_fig_win*self.dpi)/(self.max_y-self.min_y)
+
+        self.b = []
+        for i in range(self.numatoms):
+            # create buttons with CustomButton class
+            # insert each atom in an array
+            self.b.append( CustomButton(self) )
+            self.b[i].setText(str(i))
+            self.b[i].setObjectName('%d' % i)
+            self.b[i].resize(self.button_width,
+                             self.button_height)
+
+            self.b[i].move(offset_x+(self.xa[i]-self.min_x)*scale_x-self.button_width/2,
+                           offset_y+(self.ya[i]-self.min_y)*scale_y-self.button_height/2)
+            self.b[i].setStyleSheet("QPushButton { background-color: darkgreen}")
+            #recieves left_click signal and connect to left_click function
+            self.b[i].left_click.connect(self.left_click)
+            #recieves right_click signal and connect to right_click function
+            self.b[i].right_click.connect(self.right_click)
+            self.b[i].show()
+        # x_distance between two atoms divided by 2
+        # y_distance between two atoms divided by 2
+        #to find region for every atom(atom's position + epsilon)
+        self.epsilon_x=abs(self.xa[2]-self.xa[0])/2
+        self.epsilon_y=abs(self.ya[1]-self.ya[0])
+
+
+    def left_click(self):
+        """Call-back function for a left button click on an atom"""
+        self.right_click_prev_atom_id=-1
+
+        # first, add an atom:
+        self.single_choose()
+
+    def right_click(self):
+        """Call-back function for a right button click on an atom"""
+        sender = self.sender()
+        # first, add an atom:
+        self.single_choose()
+
+        # if we called twice in a raw right button:
+
+        if self.right_click_prev_atom_id>=0:
+            self.group_choose()
+        self.right_click_prev_atom_id=int(sender.objectName())
+
+    def group_choose(self):
+        """ Function which controls that an atom is
+        between two right-clicked atoms or not.
+        already called inside right_click(self)
+        """
+        sender = self.sender()
+        self.first_atom_id  = self.right_click_prev_atom_id
+        self.second_atom_id = int(sender.objectName())
+        self.rep_atoms.remove(self.second_atom_id)
+
+        for i in range(self.numatoms-1,0,-1):
+            if (i not in self.rep_atoms) and \
+            point_within_a_segment(self.xa[self.first_atom_id],
+                                   self.ya[self.first_atom_id],
+                                   self.xa[self.second_atom_id],
+                                   self.ya[self.second_atom_id],
+                                   self.xa[i],
+                                   self.ya[i]):
+                self.rep_atoms.append(i)
+                self.b[i].setStyleSheet('background-color: red')
+
+    def single_choose(self):
+        """already called inside left_click(self) & right_click(self)
+        1) The color of button will change from green to red and vice versa for unclicking.
+        2) Position & number of marked atom will appear in text editor.
+        """
+        # sender is the atom
+        sender = self.sender()
+        atom_id = int(sender.objectName())
+
+        if atom_id not in self.rep_atoms:
+            # the unclicked atom got clicked...
+            self.rep_atoms.append(atom_id)
+
+            # extra printing for beauty:
+            self.txtbox.clear()
+            self.txtbox.appendPlainText(
+                "Atom No: "+str(atom_id)+"  "+
+                "x: "+str(self.xa[atom_id])+"  "+
+                "y: "+str(self.ya[atom_id]))
+
+            # change colour of the sender object (atom) to red:
+            sender.setStyleSheet('background-color: red')
+        else:
+            # already clicked button/atom
+            self.rep_atoms.remove(atom_id)
+
+            # set colour of the sender object (atom) to green
+            sender.setStyleSheet('background-color: darkgreen')
+
+    def on_update_click(self):
+        """User clicked on update_list button:
+        First of all text box will be cleaned.
+        User can observe position list for all of the marked atoms."""
+
+        self.txtbox.clear()
+        for i in self.rep_atoms:
+            self.txtbox.appendPlainText(
+                "Atom No: "+str(i)+"  "+
+                "x: "+str(self.xa[i])+"  "+
+                "y: "+str(self.ya[i]))
+
+
+#main settings of GUI
+app=QApplication(sys.argv)
+# enable below commands to run code directly
+#if __name__ == '__main__':
+#   w=MyWindow()
+#   w.setGeometry(1000, 1000, 1200, 1200)
+#   w.setWindowTitle('QC')
+#   w.show()
+#sys.exit(app.exec_())
