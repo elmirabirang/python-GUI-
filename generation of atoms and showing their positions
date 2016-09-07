@@ -4,6 +4,31 @@ from generate_mesh import *
 class calculate_energy():
     def __init__(self):
 
+        # read from file
+        # atoms = read_from_file(file_name)
+        # another option
+        """atoms = AtomFactory([[-1.0 1.0], [-1.1 2.], [-3.5 56565.0]])
+        # ^^^ is a list of instances of Atom class.
+        atoms[0].current_position # give [-1.0 1.0]
+        atoms[0].initial_position # give [-1.0 1.0]
+        atoms[0].id       # give 0
+        atoms[0].distance(atoms[1]) # give the distance between two atoms"""
+
+
+        # plus some more
+
+
+        #energy = calculate_energy(some intput) ## this is a function in your library!
+
+        # end of the test
+
+
+        # repatoms
+        #1. run GUI, wait untill user clicks
+        repatoms_id = [1, 55, 101] # <- GUI
+        # 2. define this object manually
+        repatoms_id = [1,2,3,4,5]
+
         self.acc_file=modify_file()
         #weight of rep_atom k
         self.n_k=[]
@@ -12,9 +37,9 @@ class calculate_energy():
         #total enegy
         self.qc_eng=0.0
         #Ar
-        self.epsilon=1.0
+        self.epsilon=213.96
         #Ar
-        self.sigma=1.0
+        self.sigma=426.0
         if self.acc_file.guideactive==True:
             self.lennard_jones(float(self.acc_file.cut_off),-1)
 
@@ -26,41 +51,42 @@ class calculate_energy():
 
         #k set of voro-cells
         #number of voro cells equalls number rep-atoms
-        acc_msh=gen_mesh()
+        self.acc_msh=gen_mesh()
         if self.acc_file.guideactive==True:
-            gen_mesh.sent_to_enegy(acc_msh)
+            gen_mesh.sent_to_enegy(self.acc_msh)
         else:
-            gen_mesh.on_mesh_click(acc_msh)
-            gen_mesh.generate_clusters(acc_msh,cut_off)
+            gen_mesh.on_mesh_click(self.acc_msh)
+            gen_mesh.generate_clusters(self.acc_msh,cut_off)
             if len(args)==2:
-                gen_mesh.voro_diag(acc_msh,first_atom_id)
+                gen_mesh.voro_diag(self.acc_msh,first_atom_id)
             else:
-                gen_mesh.voro_diag(acc_msh,first_atom_id,second_atom_id)
+                gen_mesh.voro_diag(self.acc_msh,first_atom_id,second_atom_id)
         #compue weighting factors
-        for k in range(len(acc_msh.rep_atoms)):
+        for k in range(len(self.acc_msh.rep_atoms)):
 
-            self.n_k.append(acc_msh.area_cell[k]/acc_msh.varea)
+            self.n_k.append(self.acc_msh.area_cell[k]/self.acc_msh.varea)
 
         acc_file=modify_file()
         modify_file.sent_to_meshf(acc_file)
 
         #cluster k
-        for k in range(len(acc_msh.rep_atoms)):
+        for k in range(len(self.acc_msh.rep_atoms)):
             eng_cluster_k=0.0
             #atom i in cluster k
-            for i in acc_msh.atoms_in_cluster[k]:
+            for i in self.acc_msh.atoms_in_cluster[k]:
                 eng_atom_i=0.0
                 #numpy::number()
                 # j is set of all atoms
                 for j in range(acc_file.numatoms):
                     eng_ij=0.0
+                    # no manual calculation of distances
+                    #r2_ij = atoms[i].distance_squared(atom[j])
                     delx=float(acc_file.xa[i]-acc_file.xa[j])
                     dely=float(acc_file.ya[i]-acc_file.ya[j])
-                    r_ij=delx*delx+dely*dely
-                    if  r_ij>0. :
+                    r_ij=float(delx*delx+dely*dely)
+                    if r_ij>0. and r_ij<=float(sqrt(10.0)) and j<i:
                         r2inv_ij=1.0/r_ij
                         r6inv_ij=float(r2inv_ij*r2inv_ij*r2inv_ij)
-                    if r_ij>0. and r_ij<=float(sqrt(10.0)) and j<i:
                         lj1 = float(self.sigma**6.0)
                         lj2= lj1*lj1
                         eng_ij+=float(4.0*self.epsilon*r6inv_ij*(lj2*r6inv_ij-lj1))
